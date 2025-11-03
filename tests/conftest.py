@@ -35,7 +35,14 @@ def admin_user(app):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        
+        # Refresh to ensure it's in the session
+        db.session.refresh(user)
+        user_id = user.id  # Store the ID
+        
+    # Return a fresh query for the user
+    with app.app_context():
+        return db.session.get(User, user_id)
 
 @pytest.fixture
 def tech_writer(app):
@@ -49,7 +56,11 @@ def tech_writer(app):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        
+        user_id = user.id
+        
+    with app.app_context():
+        return db.session.get(User, user_id)
 
 @pytest.fixture
 def normal_user(app):
@@ -63,37 +74,56 @@ def normal_user(app):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        
+        user_id = user.id
+        
+    with app.app_context():
+        return db.session.get(User, user_id)
 
 @pytest.fixture
 def category(app, admin_user):
     """Create a test category"""
     with app.app_context():
+        # Get fresh admin_user in this context
+        admin = db.session.get(User, admin_user.id)
+        
         cat = Category(
             name='DevOps',
             description='DevOps content',
-            created_by=admin_user.id
+            created_by=admin.id
         )
         db.session.add(cat)
         db.session.commit()
-        return cat
+        
+        cat_id = cat.id
+        
+    with app.app_context():
+        return db.session.get(Category, cat_id)
 
 @pytest.fixture
 def content(app, tech_writer, category):
     """Create test content"""
     with app.app_context():
+        # Get fresh objects in this context
+        writer = db.session.get(User, tech_writer.id)
+        cat = db.session.get(Category, category.id)
+        
         cont = Content(
             title='Test Article',
             content_type='article',
-            author_id=tech_writer.id,
-            category_id=category.id,
+            author_id=writer.id,
+            category_id=cat.id,
             description='Test description',
             body='Test body content'
         )
         cont.status = 'approved'
         db.session.add(cont)
         db.session.commit()
-        return cont
+        
+        cont_id = cont.id
+        
+    with app.app_context():
+        return db.session.get(Content, cont_id)
 
 def get_auth_header(client, email, password):
     """Helper function to get authentication header"""
